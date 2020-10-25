@@ -3,10 +3,12 @@
 import UIKit
 import PlaygroundSupport
 
-// 1 Implement your onw UIView.hitTest and UIView.pointInside
-// 2 Update point(inseide) to handle tap outside parent view (in clipped zone)
-// 3 Find Common Paent of two views
-
+// https://medium.com/yandex-maps-ios/%D0%B4%D0%B5%D1%80%D0%B6%D0%B8%D0%BC-%D1%83%D0%B4%D0%B0%D1%80-%D1%81-hittest-542653d51a8c
+// 0 Override UIView.hitTest and UIView.point(inside:...) to print method calls
+// 1 Implement your onw UIView.hitTest and UIView.point(inside:...)
+// 2 Update point(inside:...) to handle tap outside parent view (in non-clipped zone)
+// 3 Find Common Parent of two views
+// 4 Add button with extra tap padding
 
 final class HitTestView: UIView {
     
@@ -36,7 +38,7 @@ final class HitTestView: UIView {
 //        super.touchesBegan(touches, with: event)
 //    }
     
-    // просто проверить, как работает
+    // просто проверить, когда вызывается
 //    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
 //        print("🔘 pointInside in view: \(name) at point: \(point): \(super.point(inside: point, with: event))")
 //                return super.point(inside: point, with: event)
@@ -48,10 +50,10 @@ final class HitTestView: UIView {
 //    }
     
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        return myPoint2(inside: point, with: event)
+        return myPoint(inside: point, with: event)
     }
     
-    func myPoint2(inside point: CGPoint, with event: UIEvent?) -> Bool {
+    func myPoint(inside point: CGPoint, with event: UIEvent?) -> Bool {
          print("🔘🔘🔘 myPointInside2 in view: \(name)")
         let inside = super.point(inside: point, with: event)
         if !inside {
@@ -75,12 +77,10 @@ final class HitTestView: UIView {
     func myHitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         print("🔲🔲 myHitTest in view: \(name) at point: \(point)")
         
-        guard self.point(inside: point, with: event) else { return nil }
-        guard alpha > 0.01 else { return nil }
-        guard isUserInteractionEnabled else { return nil }
-        guard !isHidden else { return nil }
-        
-        guard !subviews.isEmpty else { return self }
+        guard self.point(inside: point, with: event),
+            alpha > 0.01,
+            isUserInteractionEnabled,
+            !isHidden else { return nil }
         
         for child in subviews {
             if let hitTedtedChild = child.hitTest(convert(point, to: child), with: event) {
@@ -145,10 +145,11 @@ class MyViewController: UIViewController {
         test(of: viewD, and: viewB)
         test(of: viewD, and: viewX)
         test(of: viewA, and: viewZ)
+        test(of: viewA, and: viewF)
     }
     
     func test(of view1: UIView, and view2: UIView) {
-        if let parent = findNearestParent(of: view1, and: view2) {
+        if let parent = findNearestCommonParent(of: view1, and: view2) {
             print("Common parent of \(view1), \(view2) => \(parent)")
         } else {
             print("Common parent of \(view1), \(view2) => NOT FOUND")
@@ -187,7 +188,7 @@ class MyViewController: UIViewController {
 
 extension MyViewController {
     
-    func findNearestParent(of view1: UIView, and view2: UIView) -> UIView? {
+    func findNearestCommonParent(of view1: UIView, and view2: UIView) -> UIView? {
         
         guard view1 !== view2 else { return view1 }
         var path1 = pathToRoot(for: view1)
@@ -197,8 +198,6 @@ extension MyViewController {
         // check they both have common root view
         guard path1.last == path2.last else { return nil }
         
-        // case1: [D, B, A, root], [F, E, C, A], root
-        // case2: [D, B, A, root], [B, A, root]
         var commonParent = path1.last ?? path2.last
         while !path1.isEmpty || !path2.isEmpty, path1.last === path2.last {
             commonParent = path1.removeLast()
@@ -206,7 +205,7 @@ extension MyViewController {
         }
         return commonParent
     }
-    // case 1: !==, have commont parent
+    
     func pathToRoot(for view: UIView) -> [UIView] {
         var current = view
         var result = [current]
